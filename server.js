@@ -26,7 +26,7 @@ app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "bin/ui")));
+app.use(express.static(path.join(__dirname, "bin/src")));
 
 app.use("/app", appRouter);
 app.use("/login", authRouter);
