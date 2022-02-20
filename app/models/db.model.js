@@ -9,10 +9,4 @@ const connection = mysql.createPool({
 	database: dbConfig.DB
 });
 
-// Open the MySQL connection
-// connection.connect((error) => {
-// 	if (error) throw error;
-// 	console.log("Database Connected!");
-// });
-
 module.exports = connection;

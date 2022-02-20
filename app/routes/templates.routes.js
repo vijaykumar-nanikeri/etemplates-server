@@ -250,7 +250,9 @@ router.put("/userTemplates", auth.verifyAuthToken, (req, res) => {
 			res.send({
 				statusCode: HttpStatus.StatusCodes.OK,
 				statusMessage: HttpStatus.ReasonPhrases.OK,
-				message: "Template updated!"
+				data: {
+					uuid: uuid
+				}
 			});
 		}
 	});
