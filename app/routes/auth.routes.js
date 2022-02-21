@@ -143,6 +143,11 @@ router.post("/", verifyPassword, (req, res) => {
 		} else {
 			const authToken = auth.generateAuthToken(mobileNo);
 
+			mysql.query(`
+        UPDATE et_users
+        SET visiting_count = IF(visiting_count > 0, visiting_count + 1, 1)
+        WHERE id = ${req.userId}`);
+
 			res.send({
 				statusCode: HttpStatus.StatusCodes.OK,
 				statusMessage: HttpStatus.ReasonPhrases.OK,
