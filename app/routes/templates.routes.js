@@ -20,7 +20,7 @@ router.get("/:id/fields", auth.verifyAuthToken, (req, res) => {
 	const id = req.params.id;
 
 	const query = `
-    SELECT id, display_name AS name
+    SELECT id, display_name AS name, notes, size
     FROM et_template_fields
     WHERE template_id = ${id} AND deactivate = 0`;
 
@@ -138,10 +138,8 @@ const insertOrUpdateTemplateText = (res, userId, id, textId, text) => {
 };
 
 const insertOrUpdateTemplateFields = (res, userId, id, fields, textId, text) => {
-	mysql.query(`UPDATE et_template_fields SET deactivate = 1 WHERE template_id = ${id}`);
-
 	const query = `
-	  INSERT INTO et_template_fields (id, template_id, name, display_name, created_by, created_on, updated_by, updated_on, deactivate)
+	  INSERT INTO et_template_fields (id, template_id, name, display_name, notes, size, created_by, created_on, updated_by, updated_on, deactivate)
 	  VALUES ${fields.join(", ")}
     ON DUPLICATE KEY
     UPDATE name = VALUES(name), display_name = VALUES(display_name), updated_by = ${userId}, updated_on = CURRENT_TIMESTAMP, deactivate = 0`;
@@ -158,6 +156,21 @@ const insertOrUpdateTemplateFields = (res, userId, id, fields, textId, text) => 
 	});
 };
 
+const resetTemplateFields = (res, userId, id, fields, textId, text) => {
+	const query = `UPDATE et_template_fields SET deactivate = 1 WHERE template_id = ${id}`;
+
+	mysql.query(query, (error) => {
+		if (error) {
+			res.send({
+				statusCode: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+				statusMessage: HttpStatus.ReasonPhrases.INTERNAL_SERVER_ERROR
+			});
+		} else {
+			insertOrUpdateTemplateFields(res, userId, id, fields, textId, text);
+		}
+	});
+};
+
 router.post("/composeTemplate", auth.verifyAuthToken, (req, res) => {
 	const userId = req.body.userId;
 	const id = req.body.id;
@@ -170,14 +183,16 @@ router.post("/composeTemplate", auth.verifyAuthToken, (req, res) => {
 			const fieldId = field.id;
 			const displayName = field.name;
 			const name = generic.processName(displayName);
+			const notes = field.notes;
+			const size = field.size;
 
 			fields.push(
-				`(${fieldId}, ${id}, '${name}', '${displayName}', ${userId}, CURRENT_TIMESTAMP, NULL, NULL, 0)`
+				`(${fieldId}, ${id}, '${name}', '${displayName}', '${notes}', ${size}, ${userId}, CURRENT_TIMESTAMP, NULL, NULL, 0)`
 			);
 		});
 
 		if (fields.length > 0) {
-			insertOrUpdateTemplateFields(res, userId, id, fields, textId, text);
+			resetTemplateFields(res, userId, id, fields, textId, text);
 		}
 	} else {
 		mysql.query(`UPDATE et_template_fields SET deactivate = 1 WHERE template_id = ${id}`);
@@ -190,7 +205,7 @@ router.post("/composeTemplate", auth.verifyAuthToken, (req, res) => {
 router.get("/userTemplates/:userId/all", auth.verifyAuthToken, (req, res) => {
 	const userId = req.params.userId;
 	const query = `
-    SELECT id, uuid, created_on AS createdOn
+    SELECT id, uuid, filename, created_on AS createdOn
     FROM et_user_templates
     WHERE deactivate = 0 AND user_id = ${userId}
     ORDER BY created_on DESC`;
@@ -213,7 +228,7 @@ router.get("/userTemplates/:userId/all", auth.verifyAuthToken, (req, res) => {
 
 router.get("/userTemplates/:id", auth.verifyAuthToken, (req, res) => {
 	const id = req.params.id;
-	const query = `SELECT uuid, text FROM et_user_templates WHERE id = ${id}`;
+	const query = `SELECT uuid, filename, text FROM et_user_templates WHERE id = ${id}`;
 
 	mysql.query(query, (error, result) => {
 		if (error) {
@@ -234,11 +249,12 @@ router.get("/userTemplates/:id", auth.verifyAuthToken, (req, res) => {
 router.put("/userTemplates", auth.verifyAuthToken, (req, res) => {
 	const userId = req.body.userId;
 	const uuid = randomUUID();
+	const filename = req.body.filename;
 	const text = req.body.text;
 
 	const query = `
-    INSERT INTO et_user_templates (user_id, uuid, text, created_on)
-    VALUES (${userId}, '${uuid}', '${text}', CURRENT_TIMESTAMP)`;
+    INSERT INTO et_user_templates (user_id, uuid, filename, text, created_on)
+    VALUES (${userId}, '${uuid}', '${filename}', '${text}', CURRENT_TIMESTAMP)`;
 
 	mysql.query(query, (error) => {
 		if (error) {

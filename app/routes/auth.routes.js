@@ -7,50 +7,13 @@ const mysql = require("../models/db.model");
 const auth = require("../controllers/auth.controller");
 const generic = require("../models/generic.model");
 
-const verifyMobileNo = (req, res, next) => {
-	const mobileNo = req.body.mobileNo;
-
-	const query = `SELECT id AS userId, reset_default_password AS resetDefaultPassword FROM et_users WHERE mobile_no = ${mobileNo}`;
-
-	mysql.query(query, (error, result) => {
-		if (error) {
-			res.status(HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR).send({
-				statusCode: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
-				statusMessage: HttpStatus.ReasonPhrases.INTERNAL_SERVER_ERROR
-			});
-		} else {
-			if (!result.length) {
-				res.status(HttpStatus.StatusCodes.UNAUTHORIZED).send({
-					statusCode: HttpStatus.StatusCodes.UNAUTHORIZED,
-					statusMessage: HttpStatus.ReasonPhrases.UNAUTHORIZED
-				});
-			} else {
-				const password = req.body.password;
-				const registeredPassword = result[0].password;
-
-				const isValidPassword = bcrypt.compareSync(password, registeredPassword);
-
-				if (isValidPassword) {
-					req.userId = result[0].userId;
-					next();
-				} else {
-					res.status(HttpStatus.StatusCodes.UNAUTHORIZED).send({
-						statusCode: HttpStatus.StatusCodes.UNAUTHORIZED,
-						statusMessage: HttpStatus.ReasonPhrases.UNAUTHORIZED
-					});
-				}
-			}
-		}
-	});
-};
-
 const verifyPassword = (req, res, next) => {
 	const mobileNo = req.body.mobileNo;
 
 	const query = `
     SELECT id AS userId, password, reset_default_password AS resetDefaultPassword
     FROM et_users
-    WHERE mobile_no = ${mobileNo}`;
+    WHERE deactivate = 0 AND mobile_no = ${mobileNo}`;
 
 	mysql.query(query, (error, result) => {
 		if (error) {
@@ -145,7 +108,9 @@ router.post("/", verifyPassword, (req, res) => {
 
 			mysql.query(`
         UPDATE et_users
-        SET visiting_count = IF(visiting_count > 0, visiting_count + 1, 1)
+        SET
+          last_logged_on = CURRENT_TIMESTAMP,
+          visiting_count = IF(visiting_count > 0, visiting_count + 1, 1)
         WHERE id = ${req.userId}`);
 
 			res.send({

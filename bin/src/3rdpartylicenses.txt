@@ -1,3 +1,6 @@
+@angular/animations
+MIT
+
 @angular/common
 MIT
 
@@ -642,6 +645,9 @@ ngx-bootstrap/focus-trap
 MIT
 
 ngx-bootstrap/modal
+MIT
+
+ngx-bootstrap/popover
 MIT
 
 ngx-bootstrap/positioning

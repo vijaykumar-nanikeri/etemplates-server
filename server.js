@@ -19,6 +19,8 @@ var appRouter = require("./app/routes/app.routes");
 var authRouter = require("./app/routes/auth.routes");
 var categoriesRouter = require("./app/routes/categories.routes");
 var subcategoriesRouter = require("./app/routes/subcategories.routes");
+var subcategoryTypesRouter = require("./app/routes/subcategory-types.routes");
+var fieldNamesRouter = require("./app/routes/field-names.routes");
 var templatesRouter = require("./app/routes/templates.routes");
 var usersRouter = require("./app/routes/users.routes");
 
@@ -32,6 +34,8 @@ app.use("/app", appRouter);
 app.use("/login", authRouter);
 app.use("/categories", categoriesRouter);
 app.use("/subcategories", subcategoriesRouter);
+app.use("/subcategoryTypes", subcategoryTypesRouter);
+app.use("/fieldNames", fieldNamesRouter);
 app.use("/templates", templatesRouter);
 app.use("/users", usersRouter);
 

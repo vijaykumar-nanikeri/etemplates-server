@@ -13,13 +13,17 @@ router.get("/", auth.verifyAuthToken, (req, res) => {
       etu.id, etuc.id AS userCategoryId,
       etu.mobile_no AS mobileNo, etuc.display_name AS userCategory,
       etud.display_name AS name,
-      etu.created_on AS createdOn, etud_created_by.display_name AS createdBy,
+      etud_created_by.display_name AS createdBy, etu.created_on AS createdOn,
+      CASE WHEN eut.templates IS NOT NULL THEN eut.templates ELSE 0 END AS templates,
       etu.block
     FROM
       et_users etu
         LEFT JOIN
           (SELECT user_id, display_name FROM et_user_details) etud_created_by
-          ON etu.created_by = etud_created_by.user_id,
+          ON etu.created_by = etud_created_by.user_id
+        LEFT JOIN
+          (SELECT user_id, COUNT(id) AS templates FROM et_user_templates GROUP BY user_id ORDER BY user_id) eut
+          ON etu.id = eut.user_id,
       et_user_categories etuc,
       et_user_details etud
     WHERE etuc.id NOT IN (1) AND etu.deactivate = 0 AND etu.user_category_id = etuc.id AND etu.id = etud.user_id
@@ -34,13 +38,17 @@ router.post("/search", auth.verifyAuthToken, (req, res) => {
     SELECT
       etu.id, etuc.id AS userCategoryId, etu.mobile_no AS mobileNo,
       etuc.display_name AS userCategory, etud.display_name AS name,
-      etu.created_on AS createdOn, etud_created_by.display_name AS createdBy,
+      etud_created_by.display_name AS createdBy, etu.created_on AS createdOn,
+      CASE WHEN eut.templates IS NOT NULL THEN eut.templates ELSE 0 END AS templates,
       etu.block
     FROM
       et_users etu
         LEFT JOIN
           (SELECT user_id, display_name FROM et_user_details) etud_created_by
-          ON etu.created_by = etud_created_by.user_id,
+          ON etu.created_by = etud_created_by.user_id
+        LEFT JOIN
+          (SELECT user_id, COUNT(id) AS templates FROM et_user_templates GROUP BY user_id ORDER BY user_id) eut
+          ON etu.id = eut.user_id,
       et_user_categories etuc,
       et_user_details etud
     WHERE
@@ -77,7 +85,10 @@ router.get("/userCategories", auth.verifyAuthToken, (req, res) => {
 
 const verifyMobileNo = (req, res, next) => {
 	const mobileNo = req.body.mobileNo;
-	const query = `SELECT COUNT(id) AS users FROM et_users WHERE mobile_no = ${mobileNo}`;
+	const query = `
+    SELECT COUNT(id) AS users
+    FROM et_users
+    WHERE deactivate = 0 AND mobile_no = ${mobileNo}`;
 
 	mysql.query(query, (error, result) => {
 		if (error) {
@@ -155,7 +166,7 @@ router.post("/", auth.verifyAuthToken, verifyMobileNo, (req, res) => {
 	});
 });
 
-router.put("/", auth.verifyAuthToken, (req, res) => {
+router.put("/", auth.verifyAuthToken, verifyMobileNo, (req, res) => {
 	const userId = req.body.userId;
 	const id = req.body.id;
 	const userCategoryId = req.body.userCategoryId;

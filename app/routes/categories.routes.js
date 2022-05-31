@@ -9,11 +9,19 @@ const auth = require("../controllers/auth.controller");
 router.get("/", auth.verifyAuthToken, (req, res) => {
 	const query = `
     SELECT
-      etc.id, etc.display_name AS name, COUNT(ets.id) AS subcategories,
+      etc.id, etc.display_name AS name,
+      CASE WHEN ets.subcategories IS NOT NULL THEN ets.subcategories ELSE 0 END AS subcategories,
       etc.created_on AS createdOn, etud.display_name AS createdBy
     FROM
       et_categories etc
-      LEFT JOIN (SELECT id, category_id FROM et_subcategories WHERE deactivate = 0) ets ON etc.id = ets.category_id,
+      LEFT JOIN
+        (
+          SELECT COUNT(id) AS subcategories, category_id
+          FROM et_subcategories
+          WHERE deactivate = 0
+          GROUP BY category_id
+        ) ets
+        ON etc.id = ets.category_id,
       et_user_details etud
     WHERE etc.deactivate = 0 AND etc.created_by = etud.user_id
     GROUP BY etc.id
@@ -26,11 +34,19 @@ router.post("/search", auth.verifyAuthToken, (req, res) => {
 	const searchText = req.body.searchText;
 	const query = `
     SELECT
-      etc.id, etc.display_name AS name, COUNT(ets.id) AS subcategories,
+      etc.id, etc.display_name AS name,
+      CASE WHEN ets.subcategories IS NOT NULL THEN ets.subcategories ELSE 0 END AS subcategories,
       etc.created_on AS createdOn, etud.display_name AS createdBy
     FROM
       et_categories etc
-      LEFT JOIN (SELECT id, category_id FROM et_subcategories WHERE deactivate = 0) ets ON etc.id = ets.category_id,
+      LEFT JOIN
+        (
+          SELECT COUNT(id) AS subcategories, category_id
+          FROM et_subcategories
+          WHERE deactivate = 0
+          GROUP BY category_id
+        ) ets
+        ON etc.id = ets.category_id,
       et_user_details etud
     WHERE etc.deactivate = 0 AND etc.display_name LIKE '%${searchText}%' AND etc.created_by = etud.user_id
     GROUP BY etc.id
@@ -52,11 +68,28 @@ router.get("/:id/subcategories", auth.verifyAuthToken, (req, res) => {
 
 	const query = `
     SELECT
-      ets.id, ets.display_name AS name, COUNT(ett.id) AS templates,
+      ets.id, ets.display_name AS name,
+      CASE WHEN etst.types IS NOT NULL THEN etst.types ELSE 0 END AS types,
+      CASE WHEN ett.templates IS NOT NULL THEN ett.templates ELSE 0 END AS templates,
       ets.created_on AS createdOn, etud.display_name AS createdBy
     FROM
       et_subcategories ets
-      LEFT JOIN (SELECT id, subcategory_id FROM et_templates WHERE deactivate = 0) ett ON ets.id = ett.subcategory_id,
+      LEFT JOIN
+        (
+          SELECT COUNT(id) AS types, subcategory_id
+          FROM et_subcategory_types
+          WHERE deactivate = 0
+          GROUP BY subcategory_id
+        ) etst
+        ON ets.id = etst.subcategory_id
+      LEFT JOIN
+        (
+          SELECT COUNT(ett.id) AS templates, ett.subcategory_id
+          FROM et_templates ett, (SELECT id AS userId FROM et_users WHERE user_category_id = 1) etu
+          WHERE ett.deactivate = 0 AND ett.created_by IN (etu.userId)
+          GROUP BY ett.subcategory_id
+        ) ett
+        ON ets.id = ett.subcategory_id,
       et_user_details etud
     WHERE ets.category_id = ${id} AND ets.deactivate = 0 AND ets.created_by = etud.user_id
     GROUP BY ets.id
@@ -71,11 +104,28 @@ router.post("/:id/subcategories/search", auth.verifyAuthToken, (req, res) => {
 
 	const query = `
     SELECT
-      ets.id, ets.display_name AS name, COUNT(ett.id) AS templates,
+      ets.id, ets.display_name AS name,
+      CASE WHEN etst.types IS NOT NULL THEN etst.types ELSE 0 END AS types,
+      CASE WHEN ett.templates IS NOT NULL THEN ett.templates ELSE 0 END AS templates,
       ets.created_on AS createdOn, etud.display_name AS createdBy
     FROM
       et_subcategories ets
-      LEFT JOIN (SELECT id, subcategory_id FROM et_templates WHERE deactivate = 0) ett ON ets.id = ett.subcategory_id,
+      LEFT JOIN
+        (
+          SELECT COUNT(id) AS types, subcategory_id
+          FROM et_subcategory_types
+          WHERE deactivate = 0
+          GROUP BY subcategory_id
+        ) etst
+        ON ets.id = etst.subcategory_id
+      LEFT JOIN
+        (
+          SELECT COUNT(ett.id) AS templates, ett.subcategory_id
+          FROM et_templates ett, (SELECT id AS userId FROM et_users WHERE user_category_id = 1) etu
+          WHERE ett.deactivate = 0 AND ett.created_by IN (etu.userId)
+          GROUP BY ett.subcategory_id
+        ) ett
+        ON ets.id = ett.subcategory_id,
       et_user_details etud
     WHERE
       ets.category_id = ${id} AND ets.deactivate = 0
